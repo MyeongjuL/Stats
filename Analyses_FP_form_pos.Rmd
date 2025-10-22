@@ -1,0 +1,214 @@
+---
+title: "Thesis analyses: Filler Particle Form & Position"
+author: "Myeongju Lee"
+output: html_document
+---
+install.packages(Rmisc)
+install.packages("data.table")
+install.packages("stringr")
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("ggplot2")
+install.packages("readxl")
+install.packages("rstan", dependencies = TRUE)
+options(scipen = 999)
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(Rmisc))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(readxl))
+options(scipen=999)
+```
+
+# Preprocessing
+## Loading data set
+```{r pressure, echo=FALSE}
+df_form_pos <- read.csv("FP_Form_Position.csv", fileEncoding = "UTF-8")
+```
+
+### Summaries of the data set 
+```{r}
+summary(df_form_pos)
+```
+
+
+## Re-labeling rare FP forms with a frequency less than 5 into "etc"
+```{r}
+form_count <- count(df_form_pos, Form)
+df_form_pos <- mutate(df_form_pos, Form = ifelse(Form %in% form_count$Form[form_count$n < 5], "etc", Form))
+```
+
+
+## Converting Korean characters into IPA
+```{r}
+unique(df_form_pos$Form)
+df_form_pos$Form <- str_replace_all(df_form_pos$Form, c("어"="/ʌ/", "아"="/a/", "음"="/ɨm/", "엄"="/ʌm/", "그"="/kɨ/", "응"="/ɨŋ/", "으"="/ɨ/", "etc"="etc"))
+
+unique(df_form_pos$Form)
+```
+
+
+## Counting FP forms & positions by condition
+### Forms
+```{r}
+form_count <- arrange(count(df_form_pos, ResponseCond, Form), ResponseCond, desc(n))
+form_count
+```
+
+### Positions
+```{r}
+pos_count <- arrange(count(df_form_pos, ResponseCond, Position), ResponseCond, desc(n))
+pos_count
+```
+
+
+## Counting FP forms by positions & the condition
+```{r}
+form_pos_count <- arrange(count(df_form_pos, ResponseCond, Form, Position), ResponseCond, desc(n))
+form_pos_count
+```
+
+
+## Coding the relevant columns as the type "factor"
+```{r}
+factors <- c("ParticipantID", "ResponseCond", "QuestionNum")
+df_form_pos[factors] <- lapply(df_form_pos[factors], factor)
+```
+
+
+```{r}
+summary(df_form_pos)
+```
+
+
+
+# Plotting data
+## Forms
+```{r}
+ggplot(form_count, aes(x = reorder(Form, -n), y = n, fill = ResponseCond)) +
+  geom_col(position = "dodge") +
+  theme_bw() +
+  ylab("Frequency") +
+  xlab("Filler Particle Form") +
+  ggtitle("Filler Particle Form by Truthfulness") +
+  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973"), labels = c("D" = "Deceptive", "T" = "Truthful"),  name = "Truthfulness") +
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14),
+        axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
+        plot.title = element_text(size = 16, margin = margin(b = 20)), legend.text = element_text(size = 12), legend.title = element_text(size = 12))
+```
+
+## Positions
+```{r}
+ggplot(pos_count, aes(x = Position, y = n, fill = ResponseCond)) +
+  geom_col(position = "dodge", width = 0.8) +
+  theme_bw() +
+  ylab("Frequency") +
+  xlab("Filler Particle Position") +
+  ggtitle("Filler Particle Position by Truthfulness") +
+  scale_x_discrete(labels=c("INI"="Turn-Initial", "INT"="Turn-Internal")) +
+  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973"), labels = c("D" = "Deceptive", "T" = "Truthful"),  name = "Truthfulness") +
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14), axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)), plot.title = element_text(size = 16, margin = margin(b = 20)), legend.text = element_text(size = 12), legend.title = element_text(size = 12))
+```
+
+
+## Saving the final data frame
+```{r}
+write.csv(df_form_pos, "Preprocessed_Form_Pos.csv")
+```
+
+
+# Analysis
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages(library(ez))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(reshape2))
+```
+
+
+## Chi-square tests: Form
+### Chi-square test
+```{r}
+form_count_wd <- pivot_wider(form_count, names_from = Form, values_from = n, values_fill = 0)
+form_count_mat <- as.matrix(form_count_wd[,-1])
+
+rownames(form_count_mat) <- form_count_wd$ResponseCond
+
+chisq_form <- chisq.test(form_count_mat)
+
+chisq_form$statistic # when df = 7, chi-square statistic should be >= 14.067 to be significant at the .05 level
+chisq_form$p.value
+chisq_form$stdres # expected and observed values significantly differ if |stdres| is >= 2
+```
+
+
+### Visualizing standard residuals with a heatmap to see which cells contribute to the chi-square value
+```{r}
+stdres_form <- melt(chisq_form$stdres)
+colnames(stdres_form) <- c("ResponseCond", "Form", "stdres")
+
+ggplot(stdres_form, aes(x = Form, y = ResponseCond, fill = stdres)) +
+  geom_tile(color = "white") +
+  scale_fill_gradientn(colours = c("#CC0000", "#CC0000", "white", "#0033CC", "#0033CC"), values  = scales::rescale(c(-2.9, -2, 0, 2, 2.9)),
+                       limits  = c(-2.9, 2.9), name = NULL) +
+  theme_minimal() +
+  ylab("Truthfulness") +
+  xlab("Filler Particle Form") +
+  ggtitle("Standardized Residuals of Chi-square Test") +
+  scale_y_discrete(limits = c("T","D"), labels=c("D"="Deceptive", "T"="Truthful")) +
+  geom_text(aes(label = round(stdres, 2)), size = 4) +
+  theme(legend.text = element_text(size = 10), plot.title = element_text(size = 16, margin = margin(b = 5), hjust = 0.5),
+        axis.title = element_text(size = 14), axis.title.x = element_text(margin = margin(t = 15)), axis.title.y = element_text(margin = margin(r = 15)),
+        axis.text = element_text(size = 12), axis.text.x = element_text(margin = margin(t = -5), hjust = 0.5), 
+        axis.text.y = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
+        panel.grid = element_blank()) +
+  coord_fixed(ratio = 1.5)
+```
+
+
+## Chi-square tests: Position
+### Chi-square test 
+```{r}
+pos_count_wd <- pivot_wider(pos_count, names_from = Position, values_from = n, values_fill = 0)
+pos_count_mat <- as.matrix(pos_count_wd[,-1])
+
+rownames(pos_count_mat) <- pos_count_wd$ResponseCond
+
+chisq_pos <- chisq.test(pos_count_mat)
+
+chisq_pos$statistic # when df = 1, chi-square statistic should be >= 3.841 to be significant at the .05 level
+chisq_pos$p.value
+chisq_pos$stdres
+```
+
+### Visualizing standard residuals with a heatmap to see which cells contribute to the chi-square value
+```{r}
+stdres_pos <- melt(chisq_pos$stdres)
+colnames(stdres_pos) <- c("ResponseCond", "Position", "stdres")
+
+ggplot(stdres_pos, aes(x = Position, y = ResponseCond, fill = stdres)) +
+  geom_tile(color = "white") +
+  scale_fill_gradientn(colours = c("#CC0000", "#CC0000", "white", "#0033CC", "#0033CC"), values  = scales::rescale(c(-2.9, -2, 0, 2, 2.9)),
+                       limits  = c(-2.9, 2.9), name = NULL) +
+  theme_minimal() +
+  ylab("Truthfulness") +
+  xlab("Filler Particle Position") +
+  ggtitle("Standardized Residuals of Chi-square Test") +
+  scale_x_discrete(labels=c("INI"="Turn-Initial", "INT"="Turn-Internal")) +
+  scale_y_discrete(limits = c("T","D"), labels=c("D"="Deceptive", "T"="Truthful")) +
+  geom_text(aes(label = round(stdres, 2)), size = 4) +
+  theme(legend.text = element_text(size = 10), plot.title = element_text(size = 16, margin = margin(b = 5), hjust = 0.5),
+        axis.title = element_text(size = 14), axis.title.x = element_text(margin = margin(t = 15)), axis.title.y = element_text(margin = margin(r = 15)),
+        axis.text = element_text(size = 12), axis.text.x = element_text(margin = margin(t = -5), hjust = 0.5), 
+        axis.text.y = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
+        panel.grid = element_blank()) +
+  coord_fixed(ratio = 1)
+```
+

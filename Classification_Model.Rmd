@@ -1,0 +1,186 @@
+---
+title: "Thesis analyses: Classification Model"
+author: "Myeongju Lee"
+output: html_document
+---
+install.packages(Rmisc)
+install.packages("data.table")
+install.packages("stringr")
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("ggplot2")
+install.packages("readxl")
+install.packages("Matrix")
+install.packages("lme4")
+install.packages("simr")
+options(scipen = 999)
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(Rmisc))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(readxl))
+options(scipen=999)
+```
+
+
+# Preparing data sets for classification model
+## Loading data sets
+```{r pressure, echo=FALSE}
+df_RL <- read.csv("PreprocessedRL.csv") # Response Latency data
+df_SR <- read.csv("PreprocessedSR.csv") # Speaking Rate data
+df_FR <- read.csv("PreprocessedFR_Item.csv") # Filler Particle Rate data
+```
+
+## Merging data frames
+### Columns in the data sets
+```{r}
+names(df_RL)
+names(df_SR)
+names(df_FR)
+```
+
+### Changing column names to a simpler one
+```{r}
+df_RL <- rename(df_RL, RL = RLMilSec)
+```
+
+### Removing unnecessary columns
+```{r}
+df_RL <- df_RL[, c("ParticipantID", "ResponseCond", "ListNum", "QuestionNum", "ItemID", "QuestionType", "RL")]
+df_SR <- df_SR[, c("ParticipantID", "ResponseCond", "ListNum", "QuestionNum", "ItemID", "QuestionType", "SR")]
+df_FR <- df_FR[, c("ParticipantID", "ResponseCond", "ListNum", "ItemID", "FR")]
+```
+
+### Columns in the data sets
+```{r}
+names(df_RL)
+names(df_SR)
+names(df_FR)
+```
+
+### Merging Response Latency & Speaking Rate data sets *preserving* unmatched rows
+```{r}  
+df_all <- merge(df_SR, df_RL, by=c("ParticipantID", "ResponseCond", "ListNum", "QuestionNum", "ItemID", "QuestionType"), all.x = TRUE)
+```
+
+### Merging the above data set with Filler Particle Rate data set *preserving* unmatched rows
+```{r}
+df_all <- merge(df_all, df_FR, by=c("ParticipantID", "ResponseCond", "ListNum", "ItemID"), all.x = TRUE)
+```
+
+
+
+# Analysis
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages(library(ez))
+suppressPackageStartupMessages(library(lme4))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(Matrix))
+```
+
+
+## Preparing
+### Coding the relevant columns as the type "factor"
+```{r}
+factors <- c("ParticipantID", "ResponseCond", "QuestionNum", "QuestionType", "ItemID")
+df_all[factors] <- lapply(df_all[factors], factor)
+
+summary(df_all)
+```
+
+### Checking the contrasts of the factor ResponseCond
+```{r}
+contrasts(df_all$ResponseCond) <- c(-.5,.5)
+contrasts(df_all$ResponseCond)
+```
+
+### Embeding the contrasts: -.5 and .5. for 2 level factors (contrast coding) and adding a column for the fixed effects
+
+contrasts(df_RL_main_folu$ResponseCond) <- c(-.5,.5)
+
+mm_RL_main_folu <- model.matrix(~ResponseCond, df_RL_main_folu)
+df_RL_main_folu$ResponseCond1 <- mm_RL_main_folu[,2]
+
+### Rescaling the continuous predictors using z-score normalization because they are on very different scales, especially Response Latency vs. the other two
+```{r}
+df_all$RL_z <- scale(df_all$RL)
+df_all$SR_z <- scale(df_all$SR)
+df_all$FR_z <- scale(df_all$FR)
+```
+
+
+## GLMM
+### Maximum model
+```{r}
+Model_all = glmer(ResponseCond ~ 1 + RL_z * SR_z * FR_z + 
+                    (1 + RL_z * SR_z * FR_z || ParticipantID) +
+                    (1 + RL_z * SR_z * FR_z || ItemID) +
+                    (1 + RL_z * SR_z * FR_z || QuestionType), 
+                  family = binomial,
+                  data = df_all,
+                  control = glmerControl(calc.derivs = FALSE),
+                  na.action = na.omit)
+
+
+summary(rePCA(Model_all))
+summary(Model_all)
+```
+
+### Reduced model 1
+```{r}
+Model_all_red = glmer(ResponseCond ~ 1 + RL_z * SR_z * FR_z + 
+                    (1 + RL_z + SR_z + FR_z + RL_z:SR_z:FR_z || ParticipantID) +
+                    (0 + RL_z + SR_z + FR_z + RL_z:SR_z + RL_z:FR_z + SR_z:FR_z || ItemID) +
+                    (1 + RL_z + RL_z:FR_z || QuestionType), 
+                  family = binomial,
+                  data = df_all,
+                  control = glmerControl(calc.derivs = FALSE),
+                  na.action = na.omit)
+
+
+summary(rePCA(Model_all_red))
+summary(Model_all_red)
+```
+
+### Reduced model 2 with correlations
+```{r}
+Model_all_red2 = glmer(ResponseCond ~ 1 + RL_z * SR_z * FR_z + 
+                    (1 + RL_z + SR_z + FR_z + RL_z:SR_z:FR_z | ParticipantID) +
+                    (0 + RL_z + SR_z + FR_z + RL_z:SR_z + RL_z:FR_z + SR_z:FR_z | ItemID) +
+                    (1 + RL_z + RL_z:FR_z | QuestionType), 
+                  family = binomial,
+                  data = df_all,
+                  control = glmerControl(calc.derivs = FALSE),
+                  na.action = na.omit)
+
+
+summary(rePCA(Model_all_red2))
+summary(Model_all_red2)
+```
+
+### Final model with correlations
+```{r}
+Model_all_Corr =  glmer(ResponseCond ~ 1 + RL_z * SR_z * FR_z + 
+                    (1 + RL_z + SR_z + FR_z | ParticipantID) +
+                    (0 + RL_z + SR_z + FR_z | ItemID) +
+                    (0 + RL_z:FR_z | QuestionType), 
+                  family = binomial,
+                  data = df_all,
+                  control = glmerControl(calc.derivs = FALSE),
+                  na.action = na.omit)
+
+
+summary(rePCA(Model_all_Corr))
+summary(Model_all_Corr)
+```
+
+

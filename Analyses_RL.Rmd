@@ -1,0 +1,509 @@
+---
+title: "Thesis analyses: Response Latency"
+author: "Myeongju Lee"
+output: html_document
+---
+install.packages(Rmisc)
+install.packages("data.table")
+install.packages("stringr")
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("ggplot2")
+install.packages("readxl")
+install.packages("Matrix")
+install.packages("lme4")
+install.packages("simr")
+options(scipen = 999)
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(Rmisc))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(readxl))
+options(scipen=999)
+```
+
+# Preprocessing
+## Loading data set
+```{r pressure, echo=FALSE}
+df_RL <- read.csv("ResponseLatency.csv")
+```
+
+### Summaries of the data set 
+```{r}
+summary(df_RL)
+```
+
+### Density plot of the data set
+```{r}
+plot(density(df_RL$RLMilSec, na.rm=TRUE))
+```
+
+
+## Separating data set into subsets
+```{r}
+df_RL_main <- subset(df_RL, QuestionNum %% 10 == 0)
+df_RL_folu <- subset(df_RL, QuestionNum %% 10 != 0)
+```
+
+### Summaries of the subsets 
+```{r}
+summary(df_RL_main)
+summary(df_RL_folu)
+```
+
+### Kolmogorov–Smirnov test to compare distributions of the subsets
+```{r}
+ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
+```
+
+### Visualizing densities of the subsets
+```{r}
+max_y <- max(density(df_RL_main$RLMilSec)$y, density(df_RL_folu$RLMilSec)$y) * 1.1
+
+plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y))
+lines(density(df_RL_folu$RLMilSec), col="blue")
+legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
+```
+
+
+## Cleaning outliers 1: in each subset per condition using *participants'* mean and sd
+### Setting low and high thresholds in the main subset
+```{r}
+RL_main_SE <- summarySE(df_RL_main, measurevar = "RLMilSec", groupvars = c("ParticipantID", "ResponseCond"), na.rm=T)
+
+RL_main_SE$Low = RL_main_SE$RLMilSec - 2*RL_main_SE$sd
+RL_main_SE$High = RL_main_SE$RLMilSec + 2*RL_main_SE$sd
+
+RL_main_SE <- RL_main_SE[,c(1,2,8,9)]
+
+df_RL_main = merge(df_RL_main, RL_main_SE)
+```
+
+### Setting low and high thresholds in the follow-up subset
+```{r}
+RL_folu_SE <- summarySE(df_RL_folu, measurevar = "RLMilSec", groupvars = c("ParticipantID", "ResponseCond"), na.rm=T)
+
+RL_folu_SE$Low = RL_folu_SE$RLMilSec - 2*RL_folu_SE$sd
+RL_folu_SE$High = RL_folu_SE$RLMilSec + 2*RL_folu_SE$sd
+
+RL_folu_SE <- RL_folu_SE[,c(1,2,8,9)]
+
+df_RL_folu = merge(df_RL_folu, RL_folu_SE)
+```
+
+### How many low outliers in the main subset
+```{r}
+length(df_RL_main[(df_RL_main$RLMilSec < df_RL_main$Low),]$RLMilSec)
+length(df_RL_main[(df_RL_main$RLMilSec < df_RL_main$Low),]$RLMilSec)/length(df_RL_main$RLMilSec)
+```
+
+### How many low outliers in the follow-up subset
+```{r}
+length(df_RL_folu[(df_RL_folu$RLMilSec < df_RL_folu$Low),]$RLMilSec)
+length(df_RL_folu[(df_RL_folu$RLMilSec < df_RL_folu$Low),]$RLMilSec)/length(df_RL_folu$RLMilSec)
+```
+
+### How many high outliers in the main subset
+```{r}
+length(df_RL_main[(df_RL_main$RLMilSec > df_RL_main$High),]$RLMilSec)
+length(df_RL_main[(df_RL_main$RLMilSec > df_RL_main$High),]$RLMilSec)/length(df_RL_main$RLMilSec)
+```
+
+### How many high outliers in the follow-up subset
+```{r}
+length(df_RL_folu[(df_RL_folu$RLMilSec > df_RL_folu$High),]$RLMilSec)
+length(df_RL_folu[(df_RL_folu$RLMilSec > df_RL_folu$High),]$RLMilSec)/length(df_RL_folu$RLMilSec)
+```
+
+### Removing Response Latency outliers in each subset
+```{r}
+df_RL_main <- df_RL_main[(df_RL_main$RLMilSec <= df_RL_main$High & df_RL_main$RLMilSec >= df_RL_main$Low), ]
+df_RL_folu <- df_RL_folu[(df_RL_folu$RLMilSec <= df_RL_folu$High & df_RL_folu$RLMilSec >= df_RL_folu$Low), ]
+```
+
+### Summaries of the subsets after removing outliers
+```{r}
+summary(df_RL_main)
+summary(df_RL_folu)
+```
+
+### Kolmogorov–Smirnov test to compare distributions of the subsets after removing outliers
+```{r}
+ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
+```
+
+### Visualizing densities of the subsets after removing outliers
+```{r}
+max_y2 <- max(density(df_RL_main$RLMilSec)$y, density(df_RL_folu$RLMilSec)$y) * 1.1
+
+plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y2))
+lines(density(df_RL_folu$RLMilSec), col="blue")
+legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
+```
+
+
+## Cleaning outliers 2: in each subset per condition using *overarching* mean and sd
+### Setting low and high thresholds in the main subset
+```{r}
+RL_main_all_SE <- summarySE(df_RL_main, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm=T)
+
+RL_main_all_SE$Low_all = RL_main_all_SE$RLMilSec - 2*RL_main_all_SE$sd
+RL_main_all_SE$High_all = RL_main_all_SE$RLMilSec + 2*RL_main_all_SE$sd
+
+RL_main_all_SE <- RL_main_all_SE[,c(1,7,8)]
+
+df_RL_main = merge(df_RL_main, RL_main_all_SE)
+```
+
+### Setting low and high thresholds in the follow-up subset
+```{r}
+RL_folu_all_SE <- summarySE(df_RL_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm=T)
+
+RL_folu_all_SE$Low_all = RL_folu_all_SE$RLMilSec - 2*RL_folu_all_SE$sd
+RL_folu_all_SE$High_all = RL_folu_all_SE$RLMilSec + 2*RL_folu_all_SE$sd
+
+RL_folu_all_SE <- RL_folu_all_SE[,c(1,7,8)]
+
+df_RL_folu = merge(df_RL_folu, RL_folu_all_SE)
+```
+
+### How many low outliers in the main subset
+```{r}
+length(df_RL_main[(df_RL_main$RLMilSec < df_RL_main$Low_all),]$RLMilSec)
+length(df_RL_main[(df_RL_main$RLMilSec < df_RL_main$Low_all),]$RLMilSec)/length(df_RL_main$RLMilSec)
+```
+
+### How many low outliers in the follow-up subset
+```{r}
+length(df_RL_folu[(df_RL_folu$RLMilSec < df_RL_folu$Low_all),]$RLMilSec)
+length(df_RL_folu[(df_RL_folu$RLMilSec < df_RL_folu$Low_all),]$RLMilSec)/length(df_RL_folu$RLMilSec)
+```
+
+### How many high outliers in the main subset
+```{r}
+length(df_RL_main[(df_RL_main$RLMilSec > df_RL_main$High_all),]$RLMilSec)
+length(df_RL_main[(df_RL_main$RLMilSec > df_RL_main$High_all),]$RLMilSec)/length(df_RL_main$RLMilSec)
+```
+
+### How many high outliers in the follow-up subset
+```{r}
+length(df_RL_folu[(df_RL_folu$RLMilSec > df_RL_folu$High_all),]$RLMilSec)
+length(df_RL_folu[(df_RL_folu$RLMilSec > df_RL_folu$High_all),]$RLMilSec)/length(df_RL_folu$RLMilSec)
+```
+
+### Removing Response Latency outliers using overarching mean and sd in each subset
+```{r}
+df_RL_main <- df_RL_main[(df_RL_main$RLMilSec <= df_RL_main$High_all & df_RL_main$RLMilSec >= df_RL_main$Low_all), ]
+df_RL_folu <- df_RL_folu[(df_RL_folu$RLMilSec <= df_RL_folu$High_all & df_RL_folu$RLMilSec >= df_RL_folu$Low_all), ]
+```
+
+### Summaries of the subsets after removing outliers using overarching mean and sd
+```{r}
+summary(df_RL_main)
+summary(df_RL_folu)
+```
+
+### Kolmogorov–Smirnov test to compare distributions of the subsets after removing outliers using overarching mean and sd
+```{r}
+ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
+```
+
+### Visualizing densities of the subsets after removing outliers using overarching mean and sd
+```{r}
+max_y3 <- max(density(df_RL_main$RLMilSec)$y, density(df_RL_folu$RLMilSec)$y) * 1.1
+
+plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y3))
+lines(density(df_RL_folu$RLMilSec), col="blue")
+legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
+```
+
+
+## Response Latency: means
+```{r}
+summarySE(df_RL, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm = T)
+summarySE(df_RL_main, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm = T)
+summarySE(df_RL_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm = T)
+```
+
+
+## Putting the subsets together again after cleaning outliers
+```{r}
+df_RL_main$QuestionType <- "Main"
+df_RL_folu$QuestionType <- "FollowUp"
+df_RL_main_folu <- rbind(df_RL_main, df_RL_folu)
+```
+
+
+## Checking distributions of the merged data frame after cleaning outliers
+```{r}
+plot(density(df_RL_main_folu$RLMilSec))
+
+hist(df_RL_main_folu$RLMilSec)
+
+qqnorm(df_RL_main_folu$RLMilSec); qqline(df_RL_main_folu$RLMilSec)
+```
+
+
+## Adding Item ID for correlation tests later
+```{r}
+df_RL_main_folu$ItemID <- df_RL_main_folu$QuestionNum %/% 10
+```
+
+
+## Coding the relevant columns as the type "factor"
+```{r}
+factors <- c("ParticipantID", "ResponseCond", "QuestionNum", "QuestionType", "ItemID")
+df_RL_main_folu[factors] <- lapply(df_RL_main_folu[factors], factor)
+
+summary(df_RL_main_folu)
+```
+
+
+
+# Plotting data of Response Latency
+## Subset of responses to Main questions
+```{r}
+plot_RL <- summarySE(df_RL_main_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm=T)
+
+ggplot(plot_RL, aes(x = ResponseCond, y = RLMilSec, fill = ResponseCond)) +
+  geom_col(position = "dodge", width = 0.6) +
+  theme_bw() +
+  ylab("Response Latency") +
+  xlab("Truthfulness") +
+  ggtitle("Response Latency  by Truthfulness") +
+  scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
+  geom_errorbar(aes(ymin=RLMilSec-se, ymax=RLMilSec+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
+  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
+  theme(legend.position = "none", axis.text = element_text(size = 12), axis.title = element_text(size = 14), 
+        axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
+        plot.title = element_text(size = 16, margin = margin(b = 20))) + 
+  coord_cartesian(ylim = c(1000, NA))
+```
+
+## Subset of responses to Main questions
+```{r}
+plot_RL_main <- summarySE(df_RL_main, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm=T)
+
+ggplot(plot_RL_main, aes(x = ResponseCond, y = RLMilSec, fill = ResponseCond)) +
+  geom_col(position = "dodge", width = 0.6) +
+  theme_bw() +
+  ylab("Response Latency") +
+  xlab("Truthfulness") +
+  ggtitle("Response Latency after Main Question by Truthfulness") +
+  scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
+  geom_errorbar(aes(ymin=RLMilSec-se, ymax=RLMilSec+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
+  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
+  theme(legend.position = "none", axis.text = element_text(size = 12), axis.title = element_text(size = 14), 
+        axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
+        plot.title = element_text(size = 16, margin = margin(b = 20))) + 
+  coord_cartesian(ylim = c(1000, NA))
+```
+
+
+## Subset of responses to Follow-up questions
+```{r}
+plot_RL_folu <- summarySE(df_RL_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm=T)
+
+ggplot(plot_RL_folu, aes(x = ResponseCond, y = RLMilSec, fill = ResponseCond)) +
+  geom_col(position = "dodge", width = 0.6) +
+  theme_bw() +
+  ylab("Response Latency") +
+  xlab("Truthfulness") +
+  ggtitle("Response Latency after Follow-up Question by Truthfulness") +
+  scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
+  geom_errorbar(aes(ymin=RLMilSec-se, ymax=RLMilSec+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
+  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
+  theme(legend.position = "none", axis.text = element_text(size = 12), axis.title = element_text(size = 14),
+        axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
+        plot.title = element_text(size = 16, margin = margin(b = 20))) +
+  coord_cartesian(ylim = c(200, NA))
+```
+
+
+## Subsets together
+```{r}
+plot_RL_main_folu <- summarySE(df_RL_main_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond", "QuestionType"), na.rm=T)
+
+plot_RL_main_folu$QuestionType <- factor(plot_RL_main_folu$QuestionType, levels = c("Main", "FollowUp"))
+
+ggplot(plot_RL_main_folu, aes(x = QuestionType, y = RLMilSec, fill = ResponseCond)) +
+  geom_col(position = "dodge", width = 0.8) +
+  theme_bw() +
+  ylab("Response Latency") +
+  xlab("Question Type") +
+  ggtitle("Response Latency by Question Type and Truthfulness") +
+  scale_x_discrete(labels = c("Main" = "Main Question", "FollowUp" = "Follow-up Question")) +
+  geom_errorbar(aes(ymin=RLMilSec - se, ymax=RLMilSec + se), linewidth =.5, width =.2, position = position_dodge(0.8)) +
+  scale_fill_manual(values = c("D" = "#FF7C80", "T" = "#8ED973"), labels = c("T" = "Truthful", "D" = "Deceptive")) +
+  theme(legend.title = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = 14),
+        axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
+        plot.title = element_text(size = 16, margin = margin(b = 20))) +
+  coord_cartesian(ylim = c(200, NA))
+```
+
+
+## Saving the final data frame
+```{r}
+write.csv(df_RL_main_folu, "PreprocessedRL.csv")
+write.csv(df_RL_main, "PreprocessedRL_main.csv")
+write.csv(df_RL_folu, "PreprocessedRL_folu.csv")
+```
+
+
+
+# Analysis
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages(library(ez))
+suppressPackageStartupMessages(library(lme4))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(Matrix))
+suppressPackageStartupMessages(library(simr))
+```
+
+
+## Preparing
+### Embeding the contrasts: -.5 and .5. for 2 level factors (contrast coding) and adding a column for the fixed effects
+```{r}
+contrasts(df_RL_main_folu$ResponseCond) <- c(-.5,.5)
+
+mm_RL_main_folu <- model.matrix(~ResponseCond, df_RL_main_folu)
+df_RL_main_folu$ResponseCond1 <- mm_RL_main_folu[,2]
+```
+
+
+## LMM
+1 - intercept
+ResponseCond1 - D vs. T
+
+The critical t value > |2|
+
+### Maximum model without correlation
+```{r}
+Model_RL = lmer(RLMilSec ~ 1 + ResponseCond1 + 
+                  (1 + ResponseCond1 || ParticipantID) + 
+                  (1 + ResponseCond1 || QuestionNum) + 
+                  (1 + ResponseCond1 || QuestionType),
+                REML=FALSE,
+                data=df_RL_main_folu,
+                control=lmerControl(calc.derivs=FALSE),
+                na.action=na.omit)
+
+summary(rePCA(Model_RL))
+summary(Model_RL)
+```
+
+### Reduced model with correlations: Final model
+```{r}
+Model_RL_Corr = lmer(RLMilSec ~ 1 + ResponseCond1 + 
+                  (1 + ResponseCond1 | ParticipantID) + 
+                  (1 + ResponseCond1 | QuestionNum) + 
+                  (1 | QuestionType),
+                REML=FALSE,
+                data=df_RL_main_folu,
+                control=lmerControl(calc.derivs=FALSE),
+                na.action=na.omit)
+
+summary(rePCA(Model_RL_Corr))
+summary(Model_RL_Corr)
+```
+
+### Checking model residuals
+```{r}
+plot(fitted(Model_RL_Corr), resid(Model_RL_Corr))
+abline(h=0, col="red")
+
+hist(resid(Model_RL_Corr))
+qqnorm(resid(Model_RL_Corr)); qqline(resid(Model_RL_Corr))
+```
+
+### Estimating power of the final model: by number of participants
+```{r}  
+power_RL_part <- powerCurve(Model_RL_Corr,
+                         fixed("ResponseCond1", "z"),
+                         along = "ParticipantID",
+                         breaks = c(10, 15, 20, 25, 30, 40, 50, 60),
+                         nsim = 100,
+                         alpha = .045,
+                         progress = FALSE)
+plot(power_RL_part)
+print(power_RL_part)
+```
+
+### Estimating power of the final model: by number of turns
+```{r}  
+power_RL_turn <- powerCurve(Model_RL_Corr,
+                         fixed("ResponseCond1", "z"),
+                         along = "QuestionNum",
+                         breaks = c(150, 200, 250, 300, 350, 400, 450, 500),
+                         nsim = 100,
+                         alpha = .045,
+                         progress = FALSE)
+plot(power_RL_turn)
+print(power_RL_turn)
+```
+
+## Correlation between responses to Main & Follow-up questions per Participant
+### Creating a mean data frame
+```{r}
+df_RL_mean_part <- summarySE(df_RL_main_folu, measurevar = "RLMilSec", groupvars = c("ParticipantID", "QuestionType"), na.rm = T)
+df_RL_mean_part <- df_RL_mean_part[, c("ParticipantID", "QuestionType", "RLMilSec")]
+df_RL_mean_part <- pivot_wider(df_RL_mean_part, names_from = QuestionType, values_from = RLMilSec)
+```
+
+### Visualizing the data frame before correlation tests
+```{r}
+ggplot(df_RL_mean_part, aes(x = Main, y = FollowUp)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "red", fill = "#fcbba1") +
+  theme_bw() +
+  labs(x = "After Main Questions",
+       y = "After Follow-up Questions",
+       title = "Mean Response Latency per Participant") +
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14),
+        axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
+        plot.title = element_text(size = 16, margin = margin(b = 20)))
+```
+
+### Pearson (using data) & Spearman (using ranks) tests
+```{r}
+cor.test(df_RL_mean_part$Main, df_RL_mean_part$FollowUp, method = "pearson")
+cor.test(df_RL_mean_part$Main, df_RL_mean_part$FollowUp, method = "spearman")
+```
+
+
+## Correlation between responses to Main & Follow-up questions per Item
+### Creating a mean data frame
+```{r}
+df_RL_mean_item <- summarySE(df_RL_main_folu, measurevar = "RLMilSec", groupvars = c("ItemID", "QuestionType"), na.rm = T)
+df_RL_mean_item <- df_RL_mean_item[, c("ItemID", "QuestionType", "RLMilSec")]
+df_RL_mean_item <- pivot_wider(df_RL_mean_item, names_from = QuestionType, values_from = RLMilSec)
+```
+
+### Visualizing the data frame before correlation tests
+```{r}
+ggplot(df_RL_mean_item, aes(x = Main, y = FollowUp)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE, level = 0.95, color = "red", fill = "#fcbba1") +
+  theme_bw() +
+  labs(x = "After Main Questions",
+       y = "After Follow-up Questions",
+       title = "Mean Response Latency per Item") +
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14),
+        axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
+        plot.title = element_text(size = 16, margin = margin(b = 20)))
+```
+
+### Pearson (using data) & Spearman (using ranks) tests
+```{r}
+cor.test(df_RL_mean_item$Main, df_RL_mean_item$FollowUp, method = "pearson")
+cor.test(df_RL_mean_item$Main, df_RL_mean_item$FollowUp, method = "spearman")
+```
+
