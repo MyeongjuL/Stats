@@ -224,9 +224,8 @@ legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
 
 
-## Response Latency: means
+## Response Latency (in each subset): means
 ```{r}
-summarySE(df_RL, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm = T)
 summarySE(df_RL_main, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm = T)
 summarySE(df_RL_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm = T)
 ```
@@ -239,6 +238,10 @@ df_RL_folu$QuestionType <- "FollowUp"
 df_RL_main_folu <- rbind(df_RL_main, df_RL_folu)
 ```
 
+## Response Latency (together): means
+```{r}
+summarySE(df_RL_main_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm = T)
+```
 
 ## Checking distributions of the merged data frame after cleaning outliers
 ```{r}
@@ -267,16 +270,16 @@ summary(df_RL_main_folu)
 
 
 # Plotting data of Response Latency
-## Subset of responses to Main questions
+## Whole dataset
 ```{r}
 plot_RL <- summarySE(df_RL_main_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm=T)
 
 ggplot(plot_RL, aes(x = ResponseCond, y = RLMilSec, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.6) +
   theme_bw() +
-  ylab("Response Latency") +
-  xlab("Truthfulness") +
-  ggtitle("Response Latency  by Truthfulness") +
+  ylab("Response Latency (ms)") +
+  xlab("Response Condition") +
+  ggtitle("Response Latency by Response Condition") +
   scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
   geom_errorbar(aes(ymin=RLMilSec-se, ymax=RLMilSec+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
   scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
@@ -293,9 +296,9 @@ plot_RL_main <- summarySE(df_RL_main, measurevar = "RLMilSec", groupvars = c("Re
 ggplot(plot_RL_main, aes(x = ResponseCond, y = RLMilSec, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.6) +
   theme_bw() +
-  ylab("Response Latency") +
-  xlab("Truthfulness") +
-  ggtitle("Response Latency after Main Question by Truthfulness") +
+  ylab("Response Latency (ms)") +
+  xlab("Response Condition") +
+  ggtitle("Response Latency after Main Question by Response Condition") +
   scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
   geom_errorbar(aes(ymin=RLMilSec-se, ymax=RLMilSec+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
   scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
@@ -313,15 +316,15 @@ plot_RL_folu <- summarySE(df_RL_folu, measurevar = "RLMilSec", groupvars = c("Re
 ggplot(plot_RL_folu, aes(x = ResponseCond, y = RLMilSec, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.6) +
   theme_bw() +
-  ylab("Response Latency") +
-  xlab("Truthfulness") +
-  ggtitle("Response Latency after Follow-up Question by Truthfulness") +
+  ylab("Response Latency (ms)") +
+  xlab("Response Condition") +
+  ggtitle("Response Latency after Follow-up Question by Response Condition") +
   scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
   geom_errorbar(aes(ymin=RLMilSec-se, ymax=RLMilSec+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
   scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
   theme(legend.position = "none", axis.text = element_text(size = 12), axis.title = element_text(size = 14),
         axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
-        plot.title = element_text(size = 16, margin = margin(b = 20))) +
+        plot.title = element_text(size = 15, margin = margin(b = 20))) +
   coord_cartesian(ylim = c(200, NA))
 ```
 
@@ -335,9 +338,9 @@ plot_RL_main_folu$QuestionType <- factor(plot_RL_main_folu$QuestionType, levels 
 ggplot(plot_RL_main_folu, aes(x = QuestionType, y = RLMilSec, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.8) +
   theme_bw() +
-  ylab("Response Latency") +
+  ylab("Response Latency (ms)") +
   xlab("Question Type") +
-  ggtitle("Response Latency by Question Type and Truthfulness") +
+  ggtitle("Response Latency by Question Type and Response Condition") +
   scale_x_discrete(labels = c("Main" = "Main Question", "FollowUp" = "Follow-up Question")) +
   geom_errorbar(aes(ymin=RLMilSec - se, ymax=RLMilSec + se), linewidth =.5, width =.2, position = position_dodge(0.8)) +
   scale_fill_manual(values = c("D" = "#FF7C80", "T" = "#8ED973"), labels = c("T" = "Truthful", "D" = "Deceptive")) +
@@ -424,31 +427,6 @@ hist(resid(Model_RL_Corr))
 qqnorm(resid(Model_RL_Corr)); qqline(resid(Model_RL_Corr))
 ```
 
-### Estimating power of the final model: by number of participants
-```{r}  
-power_RL_part <- powerCurve(Model_RL_Corr,
-                         fixed("ResponseCond1", "z"),
-                         along = "ParticipantID",
-                         breaks = c(10, 15, 20, 25, 30, 40, 50, 60),
-                         nsim = 100,
-                         alpha = .045,
-                         progress = FALSE)
-plot(power_RL_part)
-print(power_RL_part)
-```
-
-### Estimating power of the final model: by number of turns
-```{r}  
-power_RL_turn <- powerCurve(Model_RL_Corr,
-                         fixed("ResponseCond1", "z"),
-                         along = "QuestionNum",
-                         breaks = c(150, 200, 250, 300, 350, 400, 450, 500),
-                         nsim = 100,
-                         alpha = .045,
-                         progress = FALSE)
-plot(power_RL_turn)
-print(power_RL_turn)
-```
 
 ## Correlation between responses to Main & Follow-up questions per Participant
 ### Creating a mean data frame
