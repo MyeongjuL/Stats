@@ -47,7 +47,7 @@ df_form_pos <- mutate(df_form_pos, Form = ifelse(Form %in% form_count$Form[form_
 ## Converting Korean characters into IPA
 ```{r}
 unique(df_form_pos$Form)
-df_form_pos$Form <- str_replace_all(df_form_pos$Form, c("어"="/ʌ/", "아"="/a/", "음"="/ɨm/", "엄"="/ʌm/", "그"="/kɨ/", "응"="/ɨŋ/", "으"="/ɨ/", "etc"="etc"))
+df_form_pos$Form <- str_replace_all(df_form_pos$Form, c("어"="/ʌ/", "아"="/a/", "음"="/m/", "엄"="/ʌm/", "그"="/kɨ/", "응"="/ɨŋ/", "으"="/ɨ/", "etc"="etc"))
 
 unique(df_form_pos$Form)
 ```
@@ -95,11 +95,11 @@ ggplot(form_count, aes(x = reorder(Form, -n), y = n, fill = ResponseCond)) +
   theme_bw() +
   ylab("Frequency") +
   xlab("Filler Particle Form") +
-  ggtitle("Filler Particle Form by Truthfulness") +
-  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973"), labels = c("D" = "Deceptive", "T" = "Truthful"),  name = "Truthfulness") +
+  ggtitle("Filler Particle Form by Response Condition") +
+  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973"), labels = c("D" = "Deceptive", "T" = "Truthful"), name = "Response Condition") +
   theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14),
         axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
-        plot.title = element_text(size = 16, margin = margin(b = 20)), legend.text = element_text(size = 12), legend.title = element_text(size = 12))
+        plot.title = element_text(size = 16, margin = margin(b = 20)), legend.text = element_text(size = 11), legend.title = element_text(size = 11))
 ```
 
 ## Positions
@@ -109,10 +109,10 @@ ggplot(pos_count, aes(x = Position, y = n, fill = ResponseCond)) +
   theme_bw() +
   ylab("Frequency") +
   xlab("Filler Particle Position") +
-  ggtitle("Filler Particle Position by Truthfulness") +
+  ggtitle("Filler Particle Position by Response Condition") +
   scale_x_discrete(labels=c("INI"="Turn-Initial", "INT"="Turn-Internal")) +
-  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973"), labels = c("D" = "Deceptive", "T" = "Truthful"),  name = "Truthfulness") +
-  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14), axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)), plot.title = element_text(size = 16, margin = margin(b = 20)), legend.text = element_text(size = 12), legend.title = element_text(size = 12))
+  scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973"), labels = c("D" = "Deceptive", "T" = "Truthful"),  name = "Response Condition") +
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14), axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)), plot.title = element_text(size = 16, margin = margin(b = 20)), legend.text = element_text(size = 11), legend.title = element_text(size = 11))
 ```
 
 
@@ -159,8 +159,8 @@ ggplot(stdres_form, aes(x = Form, y = ResponseCond, fill = stdres)) +
   scale_fill_gradientn(colours = c("#CC0000", "#CC0000", "white", "#0033CC", "#0033CC"), values  = scales::rescale(c(-2.9, -2, 0, 2, 2.9)),
                        limits  = c(-2.9, 2.9), name = NULL) +
   theme_minimal() +
-  ylab("Truthfulness") +
-  xlab("Filler Particle Form") +
+  ylab("Response Condition") +
+  xlab("Filler Particle Forms") +
   ggtitle("Standardized Residuals of Chi-square Test") +
   scale_y_discrete(limits = c("T","D"), labels=c("D"="Deceptive", "T"="Truthful")) +
   geom_text(aes(label = round(stdres, 2)), size = 4) +
@@ -198,8 +198,8 @@ ggplot(stdres_pos, aes(x = Position, y = ResponseCond, fill = stdres)) +
   scale_fill_gradientn(colours = c("#CC0000", "#CC0000", "white", "#0033CC", "#0033CC"), values  = scales::rescale(c(-2.9, -2, 0, 2, 2.9)),
                        limits  = c(-2.9, 2.9), name = NULL) +
   theme_minimal() +
-  ylab("Truthfulness") +
-  xlab("Filler Particle Position") +
+  ylab("Response Condition") +
+  xlab("Filler Particle Positions") +
   ggtitle("Standardized Residuals of Chi-square Test") +
   scale_x_discrete(labels=c("INI"="Turn-Initial", "INT"="Turn-Internal")) +
   scale_y_discrete(limits = c("T","D"), labels=c("D"="Deceptive", "T"="Truthful")) +

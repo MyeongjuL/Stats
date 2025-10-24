@@ -103,13 +103,6 @@ contrasts(df_all$ResponseCond) <- c(-.5,.5)
 contrasts(df_all$ResponseCond)
 ```
 
-### Embeding the contrasts: -.5 and .5. for 2 level factors (contrast coding) and adding a column for the fixed effects
-
-contrasts(df_RL_main_folu$ResponseCond) <- c(-.5,.5)
-
-mm_RL_main_folu <- model.matrix(~ResponseCond, df_RL_main_folu)
-df_RL_main_folu$ResponseCond1 <- mm_RL_main_folu[,2]
-
 ### Rescaling the continuous predictors using z-score normalization because they are on very different scales, especially Response Latency vs. the other two
 ```{r}
 df_all$RL_z <- scale(df_all$RL)

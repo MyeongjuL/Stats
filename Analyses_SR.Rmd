@@ -362,10 +362,11 @@ ggplot(plot_SR_main_folu, aes(x = QuestionType, y = SR, fill = ResponseCond)) +
   ggtitle("Speaking Rate by Question Type and Response Condition") +
   scale_x_discrete(labels = c("Main" = "Main Question", "FollowUp" = "Follow-up Question")) +
   geom_errorbar(aes(ymin=SR - se, ymax=SR + se), linewidth =.5, width =.2, position = position_dodge(0.8)) +
-  scale_fill_manual(values = c("D" = "#FF7C80", "T" = "#8ED973"), labels = c("T" = "Truthful", "D" = "Deceptive")) +
-  theme(legend.title = element_blank(), axis.text = element_text(size = 12), axis.title = element_text(size = 14),
+  scale_fill_manual(values = c("D" = "#FF7C80", "T" = "#8ED973"), labels = c("T" = "Truthful", "D" = "Deceptive"), name = "Response Condition") +
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 14),
         axis.title.y = element_text(margin = margin(r = 15)), axis.title.x = element_text(margin = margin(t = 10)),
-        plot.title = element_text(size = 16, margin = margin(b = 20))) +
+        plot.title = element_text(size = 16, margin = margin(b = 20)),
+        legend.text = element_text(size = 11), legend.title = element_text(size = 11)) +
   coord_cartesian(ylim = c(3, NA))
 ```
 
