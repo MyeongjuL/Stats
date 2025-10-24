@@ -65,14 +65,21 @@ ks.test(df_SR_main$SR, df_SR_folu$SR)
 ### Visualizing densities of the subsets
 ```{r}
 max_y <- max(density(df_SR_main$SR)$y, density(df_SR_folu$SR)$y) * 1.1
+max_x <- max(max(df_SR_main$SR), max(df_SR_folu$SR)) * 1.1
 
-plot(density(df_SR_main$SR), col="red", main="Density comparison", ylim=c(0, max_y))
+plot(density(df_SR_main$SR), col="red", main="Density comparison", ylim=c(0, max_y), xlim=c(0, max_x), xlab("Speaking Rate (syl/s)"))
 lines(density(df_SR_folu$SR), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
 
 
 ## Cleaning outliers 1: in each subset per condition using *participants'* mean and sd
+### How many responses per condition
+```{r}
+table(df_SR_main$ResponseCond)
+table(df_SR_folu$ResponseCond)
+```
+
 ### Setting low and high thresholds in the main subset
 ```{r}
 SR_main_SE <- summarySE(df_SR_main, measurevar = "SR", groupvars = c("ParticipantID", "ResponseCond"), na.rm=T)
@@ -133,6 +140,12 @@ summary(df_SR_main)
 summary(df_SR_folu)
 ```
 
+### How many responses per condition after removing outliers 1
+```{r}
+table(df_SR_main$ResponseCond)
+table(df_SR_folu$ResponseCond)
+```
+
 ### Kolmogorov–Smirnov test to compare distributions of the subsets after removing outliers
 ```{r}
 ks.test(df_SR_main$SR, df_SR_folu$SR)
@@ -142,7 +155,7 @@ ks.test(df_SR_main$SR, df_SR_folu$SR)
 ```{r}
 max_y2 <- max(density(df_SR_main$SR)$y, density(df_SR_folu$SR)$y) * 1.1
 
-plot(density(df_SR_main$SR), col="red", main="Density comparison", ylim=c(0, max_y2))
+plot(density(df_SR_main$SR), col="red", main="Density comparison", ylim=c(0, max_y2), xlab("Speaking Rate (syl/s)"))
 lines(density(df_SR_folu$SR), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
@@ -209,6 +222,12 @@ summary(df_SR_main)
 summary(df_SR_folu)
 ```
 
+### How many responses per condition after removing outliers 1
+```{r}
+table(df_SR_main$ResponseCond)
+table(df_SR_folu$ResponseCond)
+```
+
 ### Kolmogorov–Smirnov test to compare distributions of the subsets after removing outliers using overarching mean and sd
 ```{r}
 ks.test(df_SR_main$SR, df_SR_folu$SR)
@@ -218,15 +237,14 @@ ks.test(df_SR_main$SR, df_SR_folu$SR)
 ```{r}
 max_y3 <- max(density(df_SR_main$SR)$y, density(df_SR_folu$SR)$y) * 1.1
 
-plot(density(df_SR_main$SR), col="red", main="Density comparison", ylim=c(0, max_y3))
+plot(density(df_SR_main$SR), col="red", main="Density comparison", ylim=c(0, max_y3), xlab("Speaking Rate (syl/s)"))
 lines(density(df_SR_folu$SR), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
 
 
-## Speaking Rate: means
+## Speaking Rate(in each subset): means
 ```{r}
-summarySE(df_SR, measurevar = "SR", groupvars = c("ResponseCond"), na.rm = T)
 summarySE(df_SR_main, measurevar = "SR", groupvars = c("ResponseCond"), na.rm = T)
 summarySE(df_SR_folu, measurevar = "SR", groupvars = c("ResponseCond"), na.rm = T)
 ```
@@ -239,6 +257,10 @@ df_SR_folu$QuestionType <- "FollowUp"
 df_SR_main_folu <- rbind(df_SR_main, df_SR_folu)
 ```
 
+## Speaking Rate (together): means
+```{r}
+summarySE(df_SR_main_folu, measurevar = "SR", groupvars = c("ResponseCond"), na.rm = T)
+```
 
 ## Checking distributions of the merged data frame after cleaning outliers
 ```{r}
@@ -274,9 +296,9 @@ plot_SR <- summarySE(df_SR_main_folu, measurevar = "SR", groupvars = c("Response
 ggplot(plot_SR, aes(x = ResponseCond, y = SR, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.6) +
   theme_bw() +
-  ylab("Speaking Rate") +
-  xlab("Truthfulness") +
-  ggtitle("Speaking Rate by Truthfulness") +
+  ylab("Speaking Rate (syl/s)") +
+  xlab("Response Condition") +
+  ggtitle("Speaking Rate by Response Condition") +
   scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
   geom_errorbar(aes(ymin=SR-se, ymax=SR+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
   scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
@@ -293,9 +315,9 @@ plot_SR_main <- summarySE(df_SR_main, measurevar = "SR", groupvars = c("Response
 ggplot(plot_SR_main, aes(x = ResponseCond, y = SR, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.6) +
   theme_bw() +
-  ylab("Speaking Rate") +
-  xlab("Truthfulness") +
-  ggtitle("Speaking Rate after Main Question by Truthfulness") +
+  ylab("Speaking Rate (syl/s)") +
+  xlab("Response Condition") +
+  ggtitle("Speaking Rate after Main Question by Response Condition") +
   scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
   geom_errorbar(aes(ymin=SR-se, ymax=SR+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
   scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
@@ -313,9 +335,9 @@ plot_SR_folu <- summarySE(df_SR_folu, measurevar = "SR", groupvars = c("Response
 ggplot(plot_SR_folu, aes(x = ResponseCond, y = SR, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.6) +
   theme_bw() +
-  ylab("Speaking Rate") +
-  xlab("Truthfulness") +
-  ggtitle("Speaking Rate after Follow-up Question by Truthfulness") +
+  ylab("Speaking Rate (syl/s)") +
+  xlab("Response Condition") +
+  ggtitle("Speaking Rate after Follow-up Question by Response Condition") +
   scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
   geom_errorbar(aes(ymin=SR-se, ymax=SR+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
   scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
@@ -335,9 +357,9 @@ plot_SR_main_folu$QuestionType <- factor(plot_SR_main_folu$QuestionType, levels 
 ggplot(plot_SR_main_folu, aes(x = QuestionType, y = SR, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.8) +
   theme_bw() +
-  ylab("Speaking Rate") +
+  ylab("Speaking Rate (syl/s)") +
   xlab("Question Type") +
-  ggtitle("Speaking Rate by Question Type and Truthfulness") +
+  ggtitle("Speaking Rate by Question Type and Response Condition") +
   scale_x_discrete(labels = c("Main" = "Main Question", "FollowUp" = "Follow-up Question")) +
   geom_errorbar(aes(ymin=SR - se, ymax=SR + se), linewidth =.5, width =.2, position = position_dodge(0.8)) +
   scale_fill_manual(values = c("D" = "#FF7C80", "T" = "#8ED973"), labels = c("T" = "Truthful", "D" = "Deceptive")) +
@@ -424,32 +446,6 @@ hist(resid(Model_SR_Corr))
 qqnorm(resid(Model_SR_Corr)); qqline(resid(Model_SR_Corr))
 ```
 
-
-## Estimating power of the final model: by number of participants
-```{r}  
-power_SR_part <- powerCurve(Model_SR_Corr,
-                         fixed("ResponseCond1", "z"),
-                         along = "ParticipantID",
-                         breaks = c(10, 15, 20, 25, 30, 40, 50, 60),
-                         nsim = 100,
-                         alpha = .045,
-                         progress = FALSE)
-plot(power_SR_part)
-print(power_SR_part)
-```
-
-### Estimating power of the final model: by number of turns
-```{r}  
-power_SR_turn <- powerCurve(Model_SR_Corr,
-                         fixed("ResponseCond1", "z"),
-                         along = "QuestionNum",
-                         breaks = c(250, 300, 350, 400, 450, 500, 550, 600),
-                         nsim = 100,
-                         alpha = .045,
-                         progress = FALSE)
-plot(power_SR_turn)
-print(power_SR_turn)
-```
 
 ## Correlation between responses to Main & Follow-up questions per Participant
 ### Creating a mean data frame

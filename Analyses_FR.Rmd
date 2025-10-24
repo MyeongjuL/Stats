@@ -46,7 +46,7 @@ summary(df_FR_turn)
 max_y <- max(density(df_FR_cond$FR)$y, density(df_FR_item$FR)$y, density(df_FR_turn$FR)$y) * 1.1
 max_x <- max(density(df_FR_cond$FR)$x, density(df_FR_item$FR)$x, density(df_FR_turn$FR)$x) * 1.1
 
-plot(density(df_FR_cond$FR, na.rm=TRUE), col="green",main="Density comparison", ylim=c(0, max_y), xlim=c(0, max_x))
+plot(density(df_FR_cond$FR, na.rm=TRUE), col="green",main="Density comparison", ylim=c(0, max_y), xlim=c(0, max_x), xlab("FP rate (freq/min)"))
 lines(density(df_FR_item$FR, na.rm=TRUE), col="red")
 lines(density(df_FR_turn$FR, na.rm=TRUE), col="blue")
 legend("topright", legend=c("per condition", "per item", "per turn"), col=c("green", "red","blue"), lty=1)
@@ -61,7 +61,7 @@ ks.test(df_FR_cond[(df_FR_cond$QuestionType == "Main"),]$FR, df_FR_cond[(df_FR_c
 ```{r}
 max_y2 <- max(density(df_FR_cond[(df_FR_cond$QuestionType == "Main"),]$FR)$y, density(df_FR_cond[(df_FR_cond$QuestionType == "FollowUp"),]$FR)$y) * 1.1
 
-plot(density(df_FR_cond[(df_FR_cond$QuestionType == "Main"),]$FR), col="red", main="Density comparison: per condition", ylim=c(0, max_y2))
+plot(density(df_FR_cond[(df_FR_cond$QuestionType == "Main"),]$FR), col="red", main="Density comparison: per condition", ylim=c(0, max_y2), xlab("FP rate (freq/min)"))
 lines(density(df_FR_cond[(df_FR_cond$QuestionType == "FollowUp"),]$FR), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
@@ -76,46 +76,19 @@ ks.test(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR, df_FR_turn[(df_FR_t
 max_y3 <- max(density(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR)$y, density(df_FR_turn[(df_FR_turn$QuestionType == "FollowUp"),]$FR)$y) * 1.1
 max_x3 <- max(density(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR)$x, density(df_FR_turn[(df_FR_turn$QuestionType == "FollowUp"),]$FR)$x) * 1.1
 
-plot(density(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR), col="red", main="Density comparison: per turn", ylim=c(0, max_y3), xlim=c(0, max_x3))
+plot(density(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR), col="red", main="Density comparison: per turn", ylim=c(0, max_y3), xlim=c(0, max_x3), xlab("FP rate (freq/min)"))
 lines(density(df_FR_turn[(df_FR_turn$QuestionType == "FollowUp"),]$FR), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
 
 
-## Per condition set: Cleaning outliers (no distinction between main and follow-up questions)
-### Setting low and high thresholds per condition using *overarching* mean and sd
+# The following steps are only for per Item data set (per Condition is too sparse and per Turn is too noisy)
+## Cleaning outliers 1
+### How many responses per condition
 ```{r}
-FR_cond_SE <- summarySE(df_FR_cond, measurevar = "FR", groupvars = c("ResponseCond"), na.rm=T)
-
-FR_cond_SE$Low = FR_cond_SE$FR - 2*FR_cond_SE$sd
-FR_cond_SE$High = FR_cond_SE$FR + 2*FR_cond_SE$sd
-
-FR_cond_SE <- FR_cond_SE[,c(1,7,8)]
-
-df_FR_cond = merge(df_FR_cond, FR_cond_SE)
+table(df_FR_item$ResponseCond)
 ```
 
-### How many low outliers in per condition set
-```{r}
-length(df_FR_cond[(df_FR_cond$FR < df_FR_cond$Low),]$FR)
-length(df_FR_cond[(df_FR_cond$FR < df_FR_cond$Low),]$FR)/length(df_FR_cond$FR)
-df_FR_cond[(df_FR_cond$FR < df_FR_cond$Low), c("ParticipantID", "ResponseCond", "QuestionType", "FR")]
-```
-
-### How many high outliers in per condition set
-```{r}
-length(df_FR_cond[(df_FR_cond$FR > df_FR_cond$High),]$FR)
-length(df_FR_cond[(df_FR_cond$FR > df_FR_cond$High),]$FR)/length(df_FR_cond$FR)
-df_FR_cond[(df_FR_cond$FR > df_FR_cond$High), c("ParticipantID", "ResponseCond", "QuestionType", "FR")]
-```
-
-### Removing outliers in per condition set
-```{r}
-df_FR_cond <- df_FR_cond[(df_FR_cond$FR <= df_FR_cond$High & df_FR_cond$FR >= df_FR_cond$Low), ]
-```
-
-
-## Per item set: Cleaning outliers 1
 ### Setting low and high thresholds per condition using *participants'* mean and sd
 ```{r}
 FR_item_SE <- summarySE(df_FR_item, measurevar = "FR", groupvars = c("ParticipantID", "ResponseCond"), na.rm=T)
@@ -147,8 +120,13 @@ df_FR_item[(df_FR_item$FR > df_FR_item$High), c("ParticipantID", "ResponseCond",
 df_FR_item <- df_FR_item[(df_FR_item$FR <= df_FR_item$High & df_FR_item$FR >= df_FR_item$Low), ]
 ```
 
+### How many responses per condition after removing outliers 1
+```{r}
+table(df_FR_item$ResponseCond)
+```
 
-## Per item set: Cleaning outliers 2
+
+## Cleaning outliers 2
 ### Setting low and high thresholds per condition using *overarching'* mean and sd
 ```{r}
 FR_item_all_SE <- summarySE(df_FR_item, measurevar = "FR", groupvars = c("ResponseCond"), na.rm=T)
@@ -180,147 +158,34 @@ df_FR_item[(df_FR_item$FR > df_FR_item$High_all), c("ParticipantID", "ResponseCo
 df_FR_item <- df_FR_item[(df_FR_item$FR <= df_FR_item$High_all & df_FR_item$FR >= df_FR_item$Low_all), ]
 ```
 
-
-## Per turn set: Cleaning outliers 1 (no distinction between main and follow-up questions)
-### Setting low and high thresholds per condition using *participants'* mean and sd
+### How many responses per condition after removing outliers 2
 ```{r}
-FR_turn_SE <- summarySE(df_FR_turn, measurevar = "FR", groupvars = c("ParticipantID", "ResponseCond"), na.rm=T)
-
-FR_turn_SE$Low = FR_turn_SE$FR - 2*FR_turn_SE$sd
-FR_turn_SE$High = FR_turn_SE$FR + 2*FR_turn_SE$sd
-
-FR_turn_SE <- FR_turn_SE[,c(1,2,8,9)]
-
-df_FR_turn = merge(df_FR_turn, FR_turn_SE)
-```
-
-### How many low outliers in per turn set
-```{r}
-length(df_FR_turn[(df_FR_turn$FR < df_FR_turn$Low),]$FR)
-length(df_FR_turn[(df_FR_turn$FR < df_FR_turn$Low),]$FR)/length(df_FR_turn$FR)
-df_FR_turn[(df_FR_turn$FR < df_FR_turn$Low), c("ParticipantID", "ResponseCond", "QuestionNum", "QuestionType", "FR")]
-```
-
-### How many high outliers in per turn set
-```{r}
-length(df_FR_turn[(df_FR_turn$FR > df_FR_turn$High),]$FR)
-length(df_FR_turn[(df_FR_turn$FR > df_FR_turn$High),]$FR)/length(df_FR_turn$FR)
-df_FR_turn[(df_FR_turn$FR > df_FR_turn$High), c("ParticipantID", "ResponseCond", "QuestionNum", "QuestionType", "FR")]
-```
-
-### Removing outliers in per turn set
-```{r}
-df_FR_turn <- df_FR_turn[(df_FR_turn$FR <= df_FR_turn$High & df_FR_turn$FR >= df_FR_turn$Low), ]
-```
-
-
-## Per turn set: Cleaning outliers 2
-### Setting low and high thresholds per condition using *overarching'* mean and sd
-```{r}
-FR_turn_all_SE <- summarySE(df_FR_turn, measurevar = "FR", groupvars = c("ResponseCond"), na.rm=T)
-
-FR_turn_all_SE$Low_all = FR_turn_all_SE$FR - 2*FR_turn_all_SE$sd
-FR_turn_all_SE$High_all = FR_turn_all_SE$FR + 2*FR_turn_all_SE$sd
-
-FR_turn_all_SE <- FR_turn_all_SE[,c(1,7,8)]
-
-df_FR_turn = merge(df_FR_turn, FR_turn_all_SE)
-```
-
-### How many low outliers in per turn set
-```{r}
-length(df_FR_turn[(df_FR_turn$FR < df_FR_turn$Low_all),]$FR)
-length(df_FR_turn[(df_FR_turn$FR < df_FR_turn$Low_all),]$FR)/length(df_FR_turn$FR)
-df_FR_turn[(df_FR_turn$FR < df_FR_turn$Low_all), c("ParticipantID", "ResponseCond", "QuestionNum", "FR")]
-```
-
-### How many high outliers in per turn set
-```{r}
-length(df_FR_turn[(df_FR_turn$FR > df_FR_turn$High_all),]$FR)
-length(df_FR_turn[(df_FR_turn$FR > df_FR_turn$High_all),]$FR)/length(df_FR_turn$FR)
-df_FR_turn[(df_FR_turn$FR > df_FR_turn$High_all), c("ParticipantID", "ResponseCond", "QuestionNum", "FR")]
-```
-
-### Removing outliers in per turn set
-```{r}
-df_FR_turn <- df_FR_turn[(df_FR_turn$FR <= df_FR_turn$High_all & df_FR_turn$FR >= df_FR_turn$Low_all), ]
+table(df_FR_item$ResponseCond)
 ```
 
 
 ## Summaries of the data set after removing outliers
 ```{r}
-summary(df_FR_cond$FR)
-summary(df_FR_item$FR)
-summary(df_FR_turn$FR)
-```
-
-### Density plots of the data sets after removing outliers
-```{r}
-max_y4 <- max(density(df_FR_cond$FR)$y, density(df_FR_item$FR)$y, density(df_FR_turn$FR)$y) * 1.1
-max_x4 <- max(density(df_FR_cond$FR)$x, density(df_FR_item$FR)$x, density(df_FR_turn$FR)$x) * 1.1
-
-plot(density(df_FR_cond$FR, na.rm=TRUE), col="green",main="Density comparison", ylim=c(0, max_y4), xlim=c(0, max_x4))
-lines(density(df_FR_item$FR, na.rm=TRUE), col="red")
-lines(density(df_FR_turn$FR, na.rm=TRUE), col="blue")
-legend("topright", legend=c("per condition", "per item", "per turn"), col=c("green", "red","blue"), lty=1)
-```
-
-### Per Condition: Kolmogorov–Smirnov test to compare distributions of responses to main and follow-up questions after removing outliers
-```{r}
-ks.test(df_FR_cond[(df_FR_cond$QuestionType == "Main"),]$FR, df_FR_cond[(df_FR_cond$QuestionType == "FollowUp"),]$FR)
-```
-
-### Per Condition: Visualizing densities of responses to the different question types after removing outliers
-```{r}
-max_y2 <- max(density(df_FR_cond[(df_FR_cond$QuestionType == "Main"),]$FR)$y, density(df_FR_cond[(df_FR_cond$QuestionType == "FollowUp"),]$FR)$y) * 1.1
-
-plot(density(df_FR_cond[(df_FR_cond$QuestionType == "Main"),]$FR), col="red", main="Density comparison: per condition", ylim=c(0, max_y2))
-lines(density(df_FR_cond[(df_FR_cond$QuestionType == "FollowUp"),]$FR), col="blue")
-legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
-```
-
-### Per Turn: Kolmogorov–Smirnov test to compare distributions of responses to the different question types after removing outliers
-```{r}
-ks.test(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR, df_FR_turn[(df_FR_turn$QuestionType == "FollowUp"),]$FR)
-```
-
-### Per Turn: Visualizing densities of responses to the different question types in per turn data set after removing outliers
-```{r}
-max_y3 <- max(density(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR)$y, density(df_FR_turn[(df_FR_turn$QuestionType == "FollowUp"),]$FR)$y) * 1.1
-max_x3 <- max(density(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR)$x, density(df_FR_turn[(df_FR_turn$QuestionType == "FollowUp"),]$FR)$x) * 1.1
-
-plot(density(df_FR_turn[(df_FR_turn$QuestionType == "Main"),]$FR), col="red", main="Density comparison: per turn", ylim=c(0, max_y3), xlim=c(0, max_x3))
-lines(density(df_FR_turn[(df_FR_turn$QuestionType == "FollowUp"),]$FR), col="blue")
-legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
+summary(df_FR_item)
 ```
 
 
 ## Filler Particle Rate: means
 ```{r}
-summarySE(df_FR_cond, measurevar = "FR", groupvars = c("ResponseCond"), na.rm=T)
 summarySE(df_FR_item, measurevar = "FR", groupvars = c("ResponseCond"), na.rm=T)
-summarySE(df_FR_turn, measurevar = "FR", groupvars = c("ResponseCond"), na.rm=T)
 ```
 
 
 ## Checking distributions of the data sets after cleaning outliers
 ```{r}
-plot(density(df_FR_cond$FR))
 plot(density(df_FR_item$FR))
-plot(density(df_FR_turn$FR))
 
-hist(df_FR_cond$FR)
 hist(df_FR_item$FR)
-hist(df_FR_turn$FR)
 
-qqnorm(df_FR_cond$FR); qqline(df_FR_cond$FR)
 qqnorm(df_FR_item$FR); qqline(df_FR_item$FR)
-qqnorm(df_FR_turn$FR); qqline(df_FR_turn$FR)
 ```
 
 
-
-# The following steps are only for per Item data set (per Condition is too sparse and per Turn is too noisy)
 ## Coding the relevant columns as the type "factor"
 ```{r}
 factors <- c("ParticipantID", "ResponseCond", "ItemID")
@@ -339,9 +204,9 @@ plot_FR_item <- summarySE(df_FR_item, measurevar = "FR", groupvars = c("Response
 ggplot(plot_FR_item, aes(x = ResponseCond, y = FR, fill = ResponseCond)) +
   geom_col(position = "dodge", width = 0.6) +
   theme_bw() +
-  ylab("Filler Particle Rate") +
-  xlab("Truthfulness") +
-  ggtitle("Filler Particle Rate by Truthfulness (per Item)") +
+  ylab("Filler Particle Rate (freq/min)") +
+  xlab("Response Condition") +
+  ggtitle("Filler Particle Rate by Response Condition") +
   scale_x_discrete(labels=c("T"="Truthful", "D"="Deceptive")) +
   geom_errorbar(aes(ymin=FR-se, ymax=FR+se), linewidth=.5, width=.2, position=position_dodge(0.6)) +
   scale_fill_manual(values = c("D"="#FF7C80", "T"="#8ED973")) +
@@ -354,9 +219,7 @@ ggplot(plot_FR_item, aes(x = ResponseCond, y = FR, fill = ResponseCond)) +
 
 ## Saving the merged data frame
 ```{r}
-write.csv(df_FR_cond, "PreprocessedFR_Cond.csv")
 write.csv(df_FR_item, "PreprocessedFR_Item.csv")
-write.csv(df_FR_turn, "PreprocessedFR_Turn.csv")
 ```
 
 
@@ -426,28 +289,3 @@ hist(resid(Model_FR_item_Corr))
 qqnorm(resid(Model_FR_item_Corr)); qqline(resid(Model_FR_item_Corr))
 ```
 
-### Estimating power of the final model: by number of participants
-```{r}
-power_FR_part <- powerCurve(Model_FR_item_Corr,
-                         fixed("ResponseCond1", "z"),
-                         along = "ParticipantID",
-                         breaks = c(10, 15, 20, 25, 30, 40, 50, 60),
-                         nsim = 100,
-                         alpha = .045,
-                         progress = FALSE)
-plot(power_FR_part)
-print(power_FR_part)
-```
-
-### Estimating power of the final model: by number of turns
-```{r}  
-power_FR_turn <- powerCurve(Model_FR_item_Corr,
-                         fixed("ResponseCond1", "z"),
-                         along = "ItemID",
-                         breaks = c(20, 30, 40, 50, 60, 70, 80),
-                         nsim = 100,
-                         alpha = .045,
-                         progress = FALSE)
-plot(power_FR_turn)
-print(power_FR_turn)
-```

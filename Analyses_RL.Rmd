@@ -66,13 +66,19 @@ ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
 ```{r}
 max_y <- max(density(df_RL_main$RLMilSec)$y, density(df_RL_folu$RLMilSec)$y) * 1.1
 
-plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y))
+plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y), xlab("Response Latency (ms)"))
 lines(density(df_RL_folu$RLMilSec), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
 
 
 ## Cleaning outliers 1: in each subset per condition using *participants'* mean and sd
+### How many responses per condition
+```{r}
+table(df_RL_main$ResponseCond)
+table(df_RL_folu$ResponseCond)
+```
+
 ### Setting low and high thresholds in the main subset
 ```{r}
 RL_main_SE <- summarySE(df_RL_main, measurevar = "RLMilSec", groupvars = c("ParticipantID", "ResponseCond"), na.rm=T)
@@ -133,6 +139,12 @@ summary(df_RL_main)
 summary(df_RL_folu)
 ```
 
+### How many responses per condition after removing outliers 1
+```{r}
+table(df_RL_main$ResponseCond)
+table(df_RL_folu$ResponseCond)
+```
+
 ### Kolmogorov–Smirnov test to compare distributions of the subsets after removing outliers
 ```{r}
 ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
@@ -142,7 +154,7 @@ ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
 ```{r}
 max_y2 <- max(density(df_RL_main$RLMilSec)$y, density(df_RL_folu$RLMilSec)$y) * 1.1
 
-plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y2))
+plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y2), xlab("Response Latency (ms)"))
 lines(density(df_RL_folu$RLMilSec), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
@@ -209,6 +221,12 @@ summary(df_RL_main)
 summary(df_RL_folu)
 ```
 
+### How many responses per condition after removing outliers 2
+```{r}
+table(df_RL_main$ResponseCond)
+table(df_RL_folu$ResponseCond)
+```
+
 ### Kolmogorov–Smirnov test to compare distributions of the subsets after removing outliers using overarching mean and sd
 ```{r}
 ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
@@ -218,7 +236,7 @@ ks.test(df_RL_main$RLMilSec, df_RL_folu$RLMilSec)
 ```{r}
 max_y3 <- max(density(df_RL_main$RLMilSec)$y, density(df_RL_folu$RLMilSec)$y) * 1.1
 
-plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y3))
+plot(density(df_RL_main$RLMilSec), col="red", main="Density comparison", ylim=c(0, max_y3), xlab("Response Latency (ms)"))
 lines(density(df_RL_folu$RLMilSec), col="blue")
 legend("topright", legend=c("Main", "Follow-up"), col=c("red","blue"), lty=1)
 ```
@@ -270,7 +288,7 @@ summary(df_RL_main_folu)
 
 
 # Plotting data of Response Latency
-## Whole dataset
+## Merged set
 ```{r}
 plot_RL <- summarySE(df_RL_main_folu, measurevar = "RLMilSec", groupvars = c("ResponseCond"), na.rm=T)
 
