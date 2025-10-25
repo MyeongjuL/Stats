@@ -39,7 +39,7 @@ summary(df_form_pos)
 
 ## Re-labeling rare FP forms with a frequency less than 5 into "etc"
 ```{r}
-form_count <- count(df_form_pos, Form)
+form_count <- count(df_form_pos, Form, ResponseCond)
 df_form_pos <- mutate(df_form_pos, Form = ifelse(Form %in% form_count$Form[form_count$n < 5], "etc", Form))
 ```
 
@@ -47,7 +47,7 @@ df_form_pos <- mutate(df_form_pos, Form = ifelse(Form %in% form_count$Form[form_
 ## Converting Korean characters into IPA
 ```{r}
 unique(df_form_pos$Form)
-df_form_pos$Form <- str_replace_all(df_form_pos$Form, c("어"="/ʌ/", "아"="/a/", "음"="/m/", "엄"="/ʌm/", "그"="/kɨ/", "응"="/ɨŋ/", "으"="/ɨ/", "etc"="etc"))
+df_form_pos$Form <- str_replace_all(df_form_pos$Form, c("어"="/ʌ/", "아"="/a/", "음"="/m/", "엄"="/ʌm/", "그"="/kɨ/", "으"="/ɨ/", "etc"="etc"))
 
 unique(df_form_pos$Form)
 ```
@@ -143,7 +143,7 @@ rownames(form_count_mat) <- form_count_wd$ResponseCond
 
 chisq_form <- chisq.test(form_count_mat)
 
-chisq_form$statistic # when df = 7, chi-square statistic should be >= 14.067 to be significant at the .05 level
+chisq_form$statistic # when df = 6, chi-square statistic should be >= 12.592 to be significant at the .05 level
 chisq_form$p.value
 chisq_form$stdres # expected and observed values significantly differ if |stdres| is >= 2
 ```
